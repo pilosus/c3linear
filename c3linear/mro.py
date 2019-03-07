@@ -1,20 +1,39 @@
 from collections import deque
+from typing import Any, List, Tuple, Optional
 
 
-class BaseStack:
-    def __init__(self, lst: list):
+class DepTail(deque):
+    def __repr__(self):
+        return super().__repr__().replace('DepTail', 'tail')
+
+
+class Dependency:
+    """
+    A class representing a single linearization of class' base
+    """
+    def __init__(self, lst: List[type]) -> None:
         self._head = lst[0] if lst else None
-        self._tail = deque(lst[1:]) if lst else deque([])
+        self._tail = DepTail(lst[1:]) if lst else DepTail([])
+
+    def __contains__(self, item) -> bool:
+        return item in self._tail
+
+    def __len__(self) -> int:
+        head_size = 1 if self._head else 0
+        return head_size + len(self._tail)
 
     @property
-    def head(self):
+    def head(self) -> type:
         return self._head
 
     @property
-    def tail(self):
+    def tail(self) -> DepTail:
         return self._tail
 
-    def popleft(self):
+    def popleft(self) -> type:
+        """
+        Promote the leftmost element of the tail to the new head
+        """
         head = self._head
 
         if self._tail:
@@ -25,17 +44,7 @@ class BaseStack:
 
         return head
 
-    def __contains__(self, item):
-        """
-        Return True if self._tail contains an item, False otherwise
-        """
-        return item in self._tail
-
-    def __len__(self):
-        head_size = 1 if self._head else 0
-        return head_size + len(self._tail)
-
-    def remove(self, item):
+    def remove(self, item) -> Optional[type]:
         """
         Remove and return value from the tail and head if present or None otherwise
         """
@@ -53,36 +62,105 @@ class BaseStack:
         return 'head({}) + {}'.format(self._head, self._tail)
 
 
-def merge(*lsts) -> list:
+class DependencyList:
     """
-    >>> merge(*[['C', 'A', 'O'], ['D', 'B', 'O'], ['C', 'D']])
-    ['C', 'A', 'D', 'B', 'O']
+    A class represents list of linearizations (dependencies)
+    """
+    def __init__(self, *lists: Tuple[List[type]]) -> None:
+        self._lists = [Dependency(i) for i in lists]
+
+    def __contains__(self, item: Any) -> bool:
+        """
+        Return True if any linearization's tail contains an item
+        """
+        return any([item in l.tail for l in self._lists])
+
+    def __len__(self):
+        # the last element is parents list
+        size = len(self._lists)
+        return (size - 1) if size else 0
+
+    def __repr__(self):
+        if self.__len__() == 0:
+            return '<[]>'
+        elif self.__len__() <= 10:
+            short = '<[' + ', '.join(map(str, self._lists[:-1])) + \
+                    ', ' + 'Parents({})'.format(self._lists[-1]) + ']>'
+            return short
+        else:
+            long = '<[' + ', '.join(map(str, self._lists[0:3])) + \
+                   ' ... ' + str(self._lists[-2]) + ' + ' + \
+                   'Parents({})'.format(self._lists[-1]) + ']>'
+            return long
+
+    @property
+    def heads(self) -> List[type]:
+        return [h.head for h in self._lists[:-1]]
+
+    @property
+    def tails(self) -> 'DependencyList':
+        """
+        Return self so that __contains__ can be called
+
+        Used for readability reasons only
+        """
+        return self
+
+    @property
+    def exhausted(self) -> bool:
+        """
+        Return True if all elements of the lists are exhausted
+        """
+        return all(map(lambda x: len(x) == 0, self._lists))
+
+    def remove(self, item: type) -> None:
+        """
+        Remove an item from the lists
+
+        Once an item removed from heads, the leftmost elements of the tails
+        get promoted to become the new heads.
+        """
+        for i in self._lists:
+            if i.head == item:
+                i.popleft()
+
+
+def _merge(*lists) -> list:
+    """
+    A naive implementation of C3 linearization algorithm
+
+    See more:
+    https://en.wikipedia.org/wiki/C3_linearization
     """
     result = []
-    items = [BaseStack(i) for i in lsts]
+    linearizations = DependencyList(*lists)
 
-    # TODO optimize!
+    # FIXME infinite loops check (e.g. the head is always found in the tails,
+    #  no other candidates found)
     while True:
-        if all([len(i) == 0 for i in items]):
+        if linearizations.exhausted:
             return result
 
-        for idx in range(len(items) - 1):
-            head = items[idx].head
-            not_in_tail = [head not in j for j in items]
-            if all(not_in_tail):
+        for head in linearizations.heads:
+            if head not in linearizations.tails:
                 result.append(head)
-                for jdx in range(len(items)):
-                    if items[jdx].head == head:
-                        items[jdx].popleft()
+                linearizations.remove(head)
+
+                # Once candidate is found, continue iteration
+                # from the first element of the list
                 break
+        else:
+            # the loop never broke, no linearization could possibly be found
+            raise ValueError('Cannot compute linearization, a cycle found')
 
 
-def linearize(cls: type):
+def mro(cls: type) -> List[type]:
+    """
+    Return a list of classes in order corresponding to Python's MRO.
+    """
     result = [cls]
-    bases = cls.__bases__
 
-    if (not bases) or (bases == (object, )):
+    if not cls.__bases__:
         return result
     else:
-        # recursive call
-        return result + merge(*[linearize(c) for c in bases], bases)
+        return result + _merge(*[mro(kls) for kls in cls.__bases__], cls.__bases__)
