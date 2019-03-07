@@ -1,97 +1,47 @@
 from collections import deque
-from typing import Any, List, Tuple, Optional
+from itertools import islice
+from typing import List, Tuple, Optional
 
 
-class DepTail(deque):
-    def __repr__(self):
-        return super().__repr__().replace('DepTail', 'tail')
-
-
-class Dependency:
-    """
-    A class representing a single linearization of class' base
-    """
-    def __init__(self, lst: List[type]) -> None:
-        self._head = lst[0] if lst else None
-        self._tail = DepTail(lst[1:]) if lst else DepTail([])
-
-    def __contains__(self, item) -> bool:
-        return item in self._tail
-
-    def __len__(self) -> int:
-        head_size = 1 if self._head else 0
-        return head_size + len(self._tail)
-
+class Dependency(deque):
     @property
-    def head(self) -> type:
-        return self._head
-
-    @property
-    def tail(self) -> DepTail:
-        return self._tail
-
-    def popleft(self) -> type:
-        """
-        Promote the leftmost element of the tail to the new head
-        """
-        head = self._head
-
-        if self._tail:
-            new_head = self._tail.popleft()
-        else:
-            new_head = None
-        self._head = new_head
-
-        return head
-
-    def remove(self, item) -> Optional[type]:
-        """
-        Remove and return value from the tail and head if present or None otherwise
-        """
-        if self._head == item:
-            return self.popleft()
-
+    def head(self) -> Optional[type]:
         try:
-            self._tail.remove(item)
-        except ValueError:
+            return self[0]
+        except IndexError:
             return None
-        else:
-            return item
 
-    def __repr__(self):
-        return 'head({}) + {}'.format(self._head, self._tail)
+    @property
+    def tail(self) -> islice:
+        """
+        Return islice object, which is suffice for iteration or calling `in`
+        """
+        try:
+            return islice(self, 1, self.__len__() - 1)
+        except (ValueError, IndexError):
+            return islice([], 0, 0)
 
 
 class DependencyList:
     """
     A class represents list of linearizations (dependencies)
+
+    The last element of DependencyList is a list of parents.
+    It's needed  to the merge process preserves the local
+    precedence order of direct parent classes.
     """
     def __init__(self, *lists: Tuple[List[type]]) -> None:
         self._lists = [Dependency(i) for i in lists]
 
-    def __contains__(self, item: Any) -> bool:
+    def __contains__(self, item: type) -> bool:
         """
         Return True if any linearization's tail contains an item
         """
         return any([item in l.tail for l in self._lists])
 
     def __len__(self):
-        # the last element is parents list
         size = len(self._lists)
         return (size - 1) if size else 0
-
-    def __repr__(self):
-        if self.__len__() == 0:
-            return '<[]>'
-        elif self.__len__() <= 10:
-            short = '<[' + ', '.join(map(str, self._lists[:-1])) + \
-                    ', ' + 'Parents({})'.format(self._lists[-1]) + ']>'
-            return short
-        else:
-            long = '<[' + ', '.join(map(str, self._lists[0:3])) + \
-                   ' ... ' + str(self._lists[-2]) + ' + ' + \
-                   'Parents({})'.format(self._lists[-1]) + ']>'
-            return long
 
     @property
     def heads(self) -> List[type]:
@@ -100,7 +50,7 @@ class DependencyList:
     @property
     def tails(self) -> 'DependencyList':
         """
-        Return self so that __contains__ can be called
+        Return self so that __contains__ could be called
 
         Used for readability reasons only
         """
@@ -135,7 +85,7 @@ def _merge(*lists) -> list:
     result = []
     linearizations = DependencyList(*lists)
 
-    # FIXME infinite loops check (e.g. the head is always found in the tails,
+    # TODO infinite loops check (e.g. the head is always found in the tails,
     #  no other candidates found)
     while True:
         if linearizations.exhausted:
