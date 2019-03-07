@@ -12,7 +12,7 @@ class Dependency(deque):
             return None
 
     @property
-    def tail(self) -> islice:
+    def tail(self) -> islice:  # type: ignore
         """
         Return islice object, which is suffice for iteration or calling `in`
         """
@@ -37,18 +37,18 @@ class DependencyList:
         """
         Return True if any linearization's tail contains an item
         """
-        return any([item in l.tail for l in self._lists])
+        return any([item in l.tail for l in self._lists])  # type: ignore
 
     def __len__(self):
         size = len(self._lists)
         return (size - 1) if size else 0
 
     @property
-    def heads(self) -> List[type]:
+    def heads(self) -> List[Optional[type]]:
         return [h.head for h in self._lists[:-1]]
 
     @property
-    def tails(self) -> 'DependencyList':
+    def tails(self) -> 'DependencyList':  # type: ignore
         """
         Return self so that __contains__ could be called
 
@@ -63,7 +63,7 @@ class DependencyList:
         """
         return all(map(lambda x: len(x) == 0, self._lists))
 
-    def remove(self, item: type) -> None:
+    def remove(self, item: Optional[type]) -> None:
         """
         Remove an item from the lists
 
@@ -82,7 +82,7 @@ def _merge(*lists) -> list:
     See more:
     https://en.wikipedia.org/wiki/C3_linearization
     """
-    result = []
+    result: List[Optional[type]] = []
     linearizations = DependencyList(*lists)
 
     # TODO infinite loops check (e.g. the head is always found in the tails,
@@ -92,7 +92,7 @@ def _merge(*lists) -> list:
             return result
 
         for head in linearizations.heads:
-            if head not in linearizations.tails:
+            if head not in linearizations.tails:  # type: ignore
                 result.append(head)
                 linearizations.remove(head)
 

@@ -1,3 +1,3 @@
-from .mro import *
+from .mro import mro
 
 __all__ = ['mro']
