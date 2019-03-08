@@ -18,7 +18,7 @@ I've tried to keep the code idiomatic and easy to follow at the
 expense of performance. The project is really took a couple of hours
 to complete.  Although I didn't care about time complexity and didn't
 check correctness as thoroughly as I should, I think the project may
-help someone who want to learn how Python's Method Resolution Order
+help someone who wants to learn how Python's Method Resolution Order
 works.
 
 # Usage
