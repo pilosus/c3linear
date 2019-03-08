@@ -31,7 +31,7 @@ works.
 * Check against built-in MRO:
 ```python
 >>> class A: pass
->>> classB(A): pass
+>>> class B(A): pass
 >>> mro(B) == B.mro()
 True 
 ``` 
