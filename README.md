@@ -11,6 +11,20 @@ The recursive implementation can be found at `c3linear.mro.mro`.
 It used an auxiliary function `_merge` as well as a bunch of classes 
 to help with algorithm's readability.
 
+# Motivation
+
+The project's come to life as a byproduct of debugging 
+an overcomplicated hierarchy of mixin classes. 
+I thought I knew how exactly MRO is computed, but it turned out I didn't.
+
+I've tried to keep the code idiomatic and easy to follow 
+at the expense of performance. 
+The project is really took a couple of hours to complete. 
+Although I didn't care about time complexity and 
+didn't check correctness as thoroughly as I should, 
+I think the project may help someone who want to learn how 
+Python's Method Resolution Order works.
+
 # Usage
 
 ## Library
@@ -33,11 +47,10 @@ Take a look at `tests` for more examples.
 ```shell
 pip install -e .
 ```
-*(Optional) Install extra packages:
+* (Optional) Install extra packages:
 ```shell
 pip install -e .[extra]
 ```
-
 * Run tests with:
 ```shell
 python setup.py test
@@ -46,12 +59,12 @@ python setup.py test
 ```shell
 python setup.py flake8
 ```
+* Run `mypy`:
+```shell
+mypy c3linear/
+```
 
 # Contributing
-
-The project is really took a couple of hours to complete. 
-It's primarily intended as a little auxiliary material 
-for teaching newbies what's MRO.
 
 If you've found a bug, please open an issue describing the problem first.
 
