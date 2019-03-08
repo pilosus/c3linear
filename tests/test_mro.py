@@ -56,6 +56,10 @@ class K3(D, A):
 
 
 class Z(K1, K2, K3):
+    """
+    See hierarchy of classes here:
+    https://en.wikipedia.org/wiki/C3_linearization
+    """
     pass
 
 
@@ -80,8 +84,9 @@ class U(T):
 @pytest.mark.parametrize('cls, eq_or_exc', [
     (A, True),
     (C1, True),
+    (K1, True),
     (Z, True),
-    (U, True)
+    (U, True),
 ])
 def test_mro(cls, eq_or_exc):
     if eq_or_exc is True:
@@ -89,3 +94,21 @@ def test_mro(cls, eq_or_exc):
     else:
         with pytest.raises(eq_or_exc):
             mro(cls)
+
+
+@pytest.mark.parametrize('lists, result', [
+    (([C], [D], [A]), [C, D, A]),
+    (([A], [D], [C, A]), [D, C, A]),
+    (([D, Root], [B, Root], [E, Root], [D, B, E]),  [D, B, E, Root]),
+    (([C, A, Root], [D, B, Root], [C, D]), [C, A, D, B, Root]),
+    (([A, C], [C, A], [C, A]), ValueError),
+])
+def test_merge(lists, result):
+    """
+    For readability _merge function takes in lists of str instead of lists of classes
+    """
+    if isinstance(result, list):
+        _merge(*lists) == result
+    else:
+        with pytest.raises(result):
+            _merge(*lists)

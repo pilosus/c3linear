@@ -17,7 +17,7 @@ class Dependency(deque):
         Return islice object, which is suffice for iteration or calling `in`
         """
         try:
-            return islice(self, 1, self.__len__() - 1)
+            return islice(self, 1, self.__len__())
         except (ValueError, IndexError):
             return islice([], 0, 0)
 
@@ -43,9 +43,12 @@ class DependencyList:
         size = len(self._lists)
         return (size - 1) if size else 0
 
+    def __repr__(self):
+        return self._lists.__repr__()
+
     @property
     def heads(self) -> List[Optional[type]]:
-        return [h.head for h in self._lists[:-1]]
+        return [h.head for h in self._lists]
 
     @property
     def tails(self) -> 'DependencyList':  # type: ignore
@@ -71,28 +74,20 @@ class DependencyList:
         get promoted to become the new heads.
         """
         for i in self._lists:
-            if i.head == item:
+            if i and i.head == item:
                 i.popleft()
 
 
 def _merge(*lists) -> list:
-    """
-    A naive implementation of C3 linearization algorithm
-
-    See more:
-    https://en.wikipedia.org/wiki/C3_linearization
-    """
     result: List[Optional[type]] = []
     linearizations = DependencyList(*lists)
 
-    # TODO infinite loops check (e.g. the head is always found in the tails,
-    #  no other candidates found)
     while True:
         if linearizations.exhausted:
             return result
 
         for head in linearizations.heads:
-            if head not in linearizations.tails:  # type: ignore
+            if head and (head not in linearizations.tails):  # type: ignore
                 result.append(head)
                 linearizations.remove(head)
 
@@ -100,7 +95,7 @@ def _merge(*lists) -> list:
                 # from the first element of the list
                 break
         else:
-            # the loop never broke, no linearization could possibly be found
+            # Loop never broke, no linearization could possibly be found
             raise ValueError('Cannot compute linearization, a cycle found')
 
 
